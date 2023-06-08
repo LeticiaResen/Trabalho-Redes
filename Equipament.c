@@ -1,66 +1,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
+#include <arpa/inet.h>
 
-void error(char *msg) {
-	perror(msg);
-	exit(0);
-}
+#define BUFFER_SIZE 1024
 
 int main(int argc, char *argv[]) {
-	int sockfd, portno, n;
+    if (argc != 3) {
+        printf("Usage: %s <server_ip> <server_port>\n", argv[0]);
+        return 1;
+    }
 
-	struct sockaddr_in serv_addr;
-	struct hostent *server;
+    int sock;
+    struct sockaddr_in server_address;
+    char buffer[BUFFER_SIZE];
 
-	char buffer[256];
-	if (argc < 3) {
-		fprintf(stderr,"usage %s hostname port\n", argv[0]);
-		exit(0);
-	}
+    // Create socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("socket creation failed");
+        exit(EXIT_FAILURE);
+    }
 
-	portno = atoi(argv[2]);
-	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sockfd < 0)
-		error("ERROR opening socket");
-	server = gethostbyname(argv[1]);
-	if (server == NULL) {
-		fprintf(stderr,"ERROR, no such host\n");
-		exit(0);
-	}
+    server_address.sin_family = AF_INET;
+    server_address.sin_port = htons(atoi(argv[2]));
 
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	serv_addr.sin_family = AF_INET;
-	bcopy((char *)server->h_addr,
-			(char *)&serv_addr.sin_addr.s_addr,
-			server->h_length);
-	serv_addr.sin_port = htons(portno);
+    // Convert IPv4 and IPv6 addresses from text to binary form
+    if (inet_pton(AF_INET, argv[1], &server_address.sin_addr) <= 0) {
+        perror("invalid address / address not supported");
+        exit(EXIT_FAILURE);
+    }
 
-	if (connect(sockfd,(struct sockaddr *)&serv_addr,sizeof(serv_addr)) < 0)
-		error("ERROR connecting");
-	printf("Please enter the message: ");
+    // Connect to the server
+    if (connect(sock, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
+        perror("connection failed");
+        exit(EXIT_FAILURE);
+    }
 
-	memset(buffer, 0, 256);
-	fgets(buffer,255,stdin);
-	n = send(sockfd,buffer,strlen(buffer), 0);
-	if (n < 0)
-		error("ERROR writing to socket");
-	while(1)
-	{
-	memset(buffer, 0, 256);
-	n = recv(sockfd,buffer,255,0);
-	if (n < 0)
-		error("ERROR reading from socket");
+    while (1) {
+        printf("Enter a message: ");
+        fgets(buffer, BUFFER_SIZE, stdin);
 
-	printf("%s\n",buffer);
+        // Send message to the server
+        send(sock, buffer, strlen(buffer), 0);
 
-	}
+        // Receive the response from the server
+        memset(buffer, 0, BUFFER_SIZE);
+        if (recv(sock, buffer, BUFFER_SIZE, 0) <= 0) {
+            perror("recv failed");
+            break;
+        }
 
-	return EXIT_SUCCESS;
+        printf("Server response: %s\n", buffer);
+    }
+
+    // Close the socket
+    close(sock);
+
+    return 0;
 }
-

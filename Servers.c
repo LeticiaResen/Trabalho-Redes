@@ -1,115 +1,153 @@
-/* A simple server in the internet domain using TCP
-   The port number is passed as an argument */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <unistd.h>
-#include <netdb.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
-void error(char *msg) {
-	perror(msg);
-	exit(EXIT_FAILURE);
-}
+#define MAX_CLIENTS 2
+#define BUFFER_SIZE 1024
 
-int main(int argc, char *argv[]) {
-	int sockfd, portno, newsockfd;
-	//int newsockfd, portno, clilen, cli_addr;
-	struct sockaddr_in serv_addr;
-	//int n;
-
-	if (argc < 2) {
-		fprintf(stderr,"ERROR, no port provided\n");
-		exit(1);
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+	{
+		printf("Usage: %s <server_port>\n", argv[0]);
+		return 1;
 	}
 
-	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sockfd < 0)
-		error("ERROR opening socket");
+	int server_fd, client_fds[MAX_CLIENTS], max_fd, activity, i, valread, new_socket, sd;
+	int max_clients = MAX_CLIENTS;
+	int client_count = 0;
+	socklen_t addrlen;
+	struct sockaddr_in address;
+	char buffer[BUFFER_SIZE];
 
-	memset(&serv_addr, 0, sizeof(serv_addr));
-	portno = atoi(argv[1]);
-	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = INADDR_ANY;
-	serv_addr.sin_port = htons(portno);
-
-	if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-		error("ERROR on binding");
-
-	listen(sockfd,15);
-
-	fd_set master;
-	FD_ZERO(&master);
-
-	FD_SET(sockfd, &master);
-
-	while(1)
+	// Set up server socket
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
 	{
-		fd_set copy = master;
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	}
 
-		int socketCount=select(FD_SETSIZE, &copy, NULL, NULL, NULL);
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(atoi(argv[1]));
 
-		for (int i=0; i < socketCount; i++)
+	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+	{
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	}
+
+	if (listen(server_fd, max_clients) < 0)
+	{
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
+
+	// Initialize client file descriptor set and set server socket as the highest file descriptor
+	fd_set readfds;
+	for (i = 0; i < max_clients; i++)
+	{
+		client_fds[i] = 0;
+	}
+	max_fd = server_fd;
+
+	while (1)
+	{
+		FD_ZERO(&readfds);
+
+		FD_SET(server_fd, &readfds);
+		for (i = 0; i < max_clients; i++)
 		{
-			int sock= copy.__fds_bits[i];
-			if(sock == sockfd)
-			{
-				// Accept a new connection
-				newsockfd=accept(sockfd, NULL, NULL);
+			sd = client_fds[i];
 
-				// Add a new connection to the list of connected clients
-				FD_SET(newsockfd, &master);
-				// Send welcome 
-				char message[]="Welcome";
-				send(newsockfd, message,strlen(message)+1,0 );
+			if (sd > 0)
+			{
+				FD_SET(sd, &readfds);
+			}
+
+			if (sd > max_fd)
+			{
+				max_fd = sd;
+			}
+		}
+
+		// Wait for an activity on one of the sockets using select
+		activity = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+		if ((activity < 0) && (errno != EINTR))
+		{
+			printf("select error");
+		}
+
+		// If the server socket has a new connection, accept it
+		if (FD_ISSET(server_fd, &readfds))
+		{
+			addrlen = sizeof(address); // Definir tamanho de addrlen
+
+			if ((new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen)) < 0)
+			{
+				perror("accept");
+				exit(EXIT_FAILURE);
 			}
 			else
 			{
-				// Receive message
-				char buffer[256];
-				int bytesIn = recv(sock, buffer, 256, 0);
-
-				if ( bytesIn <=0 )
+				if (client_count >= max_clients)
 				{
-					//Drop the client
-					close(sock);
-					FD_CLR(sock, &master);
+					printf("Maximum connections reached. Rejecting new connection.\n");
+					// Building message ERROR(04)
+					memset(buffer, 0, 256);
+					buffer[0] = 11; // Type of the message (Id Msg) - ERROR
+					buffer[1] = 4;	// Number of the error - 04
+					// Sending the error message
+					send(new_socket, buffer, 256, 0);
+					close(new_socket);
 				}
 				else
 				{
-					// Send message to the other clients (BROADCAST)
-					for (int i=0; i< FD_SETSIZE; i++)
+					printf("New connection, socket fd is %d, IP is: %s, port: %d\n", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+					// Add new socket to the array of client sockets
+					for (i = 0; i < max_clients; i++)
 					{
-						int outSock = master.__fds_bits[i];
-						if(outSock!= sockfd && outSock!= sock){
-							send(outSock, buffer, bytesIn, 0);
+						if (client_fds[i] == 0)
+						{
+							client_fds[i] = new_socket;
+							client_count++;
+							break;
 						}
 					}
-
 				}
 			}
 		}
 
+		// Check for IO operations on other sockets (data from clients)
+		for (i = 0; i < max_clients; i++)
+		{
+			sd = client_fds[i];
+
+			if (FD_ISSET(sd, &readfds))
+			{
+				if ((valread = read(sd, buffer, BUFFER_SIZE)) == 0)
+				{
+					// Client has disconnected
+					getpeername(sd, (struct sockaddr *)&address, &addrlen);
+					printf("Host disconnected, IP: %s, Port: %d\n", inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+					close(sd);
+					client_fds[i] = 0;
+					client_count--;
+				}
+				else
+				{
+					// Echo back the received message
+					buffer[valread] = '\0';
+					send(sd, buffer, strlen(buffer), 0);
+				}
+			}
+		}
 	}
 
-
-	// clilen = sizeof(cli_addr);
-	// newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, (socklen_t *) &clilen);
-	// if (newsockfd < 0)
-	// 	error("ERROR on accept");
-
-	// memset(buffer, 0, 256);
-	// n = recv(newsockfd,buffer,255,0);
-	// if (n < 0) error("ERROR reading from socket");
-
-	// n = send(newsockfd,"I got your message",18,0);
-	// if (n < 0) error("ERROR writing to socket");
-
-	// printf("Here is the message: %s\n",buffer);
-
-	return EXIT_SUCCESS;
+	return 0;
 }
-
