@@ -144,6 +144,9 @@ int main(int argc, char *argv[])
 					printf("Received the list and registered equipment %d at index: %d\n", equipament_ids[i], i);
 				}
 			}
+			if (msg_type == 12){
+				printf("Sucess removal\n");
+			}
 		}
 
 		// Check if there is a message from the user
