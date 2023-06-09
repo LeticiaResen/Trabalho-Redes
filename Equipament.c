@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
 		
 		// Verify the type of the message
 		int msg_type = buffer[0];
+
 		if (msg_type == 11)
 		{
 			// Caso for um erro, pegar o código do erro
@@ -93,11 +94,10 @@ int main(int argc, char *argv[]) {
 		}
 		if(msg_type == 7) // It's a RES_ADD
 		{
-			printf("I am here");
 			// Find Out the number of the new equipament
 			int eq_code = buffer[1];
 			// Print the message
-			printf("Equipament IdEq %d added",eq_code);
+			printf("Equipament IdEq %d added\n",eq_code);
 
 		}
         // printf("Server response: %s\n", buffer);

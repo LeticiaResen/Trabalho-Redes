@@ -78,36 +78,43 @@ int main(int argc, char *argv[]) {
             } else {
                 if (client_count >= max_clients) {
                     printf("Maximum connections reached. Rejecting new connection.\n");
-					// Building message ERROR(04)
-					memset(buffer, 0, 256);
-					buffer[0] = 11; // Type of the message (Id Msg) - ERROR
-					buffer[1] = 4;	// Number of the error - 04
-					// Sending the error message
-					send(new_socket, buffer, 256, 0);
-					close(new_socket);
-                } else 
- 				{
-					printf("Equipament IdEq%d added\n", new_socket);
-					printf("New connection, socket fd is %d, IP is: %s, port: %d\n", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
-					// Creating the RES_ADD
-					memset(buffer, 0, 256);
-					buffer[0] = 7;			// Type of the message (Id Msg) - RES_ADD
-					buffer[1] = new_socket; // Number of the equipament
-					
-					for (i = 0; i < max_clients; i++)
-					{
-						// Add new socket to the array of client socket
-						if (client_fds[i] == 0)
-						{
-							client_fds[i] = new_socket;
-							client_count++;
-							break;
-						}
-						else{
-							// Send RES_ADD
-							send(client_fds[i], buffer,256,0);
-						}
-					}
+                    // Building message ERROR(04)
+                    memset(buffer, 0, BUFFER_SIZE);
+                    buffer[0] = 11; // Type of the message (Id Msg) - ERROR
+                    buffer[1] = 4;  // Number of the error - 04
+                    // Sending the error message
+                    send(new_socket, buffer, 2, 0);
+                    close(new_socket);
+                } else {
+                    printf("Equipment IdEq%d added\n", new_socket);
+                    printf("New connection, socket fd is %d, IP is: %s, port: %d\n", new_socket, inet_ntoa(address.sin_addr), ntohs(address.sin_port));
+
+                    // Creating the RES_ADD
+                    memset(buffer, 0, BUFFER_SIZE);
+                    buffer[0] = 7;            // Type of the message (Id Msg) - RES_ADD
+                    buffer[1] = new_socket; // Number of the equipment
+
+                    for (i = 0; i < max_clients; i++) {
+                        if (client_fds[i] != 0) {
+                            // Send RES_ADD
+                            int n=send(client_fds[i], buffer, 2, 0);
+							if(n<=0){
+								printf("Erro ao enviar RES_ADD");
+							}
+							else{
+								printf("RES_ADD enviado com sucesso para %d \n", client_fds[i]);
+							}
+                        }
+                    }
+
+                    // Add new socket to the array of client sockets
+                    for (i = 0; i < max_clients; i++) {
+                        if (client_fds[i] == 0) {
+                            client_fds[i] = new_socket;
+                            client_count++;
+                            break;
+                        }
+                    }
                 }
             }
         }
