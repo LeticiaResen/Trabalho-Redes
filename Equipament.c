@@ -8,6 +8,9 @@
 
 #define BUFFER_SIZE 1024
 
+int equipament_ids[15];
+int number_equipament=0;
+
 int main(int argc, char *argv[]) {
     if (argc != 3) {
         printf("Usage: %s <server_ip> <server_port>\n", argv[0]);
@@ -97,8 +100,16 @@ int main(int argc, char *argv[]) {
 			// Find Out the number of the new equipament
 			int eq_code = buffer[1];
 			// Print the message
-			printf("Equipament IdEq %d added\n",eq_code);
-
+			if(number_equipament == 0){
+				equipament_ids[number_equipament]=eq_code;
+				printf("New ID: %d \n", eq_code);
+				number_equipament++;
+			}
+			else{
+				equipament_ids[number_equipament++]= eq_code;
+				printf("Equipament IdEq %d added\n",eq_code);
+			}
+			
 		}
         // printf("Server response: %s\n", buffer);
     }
