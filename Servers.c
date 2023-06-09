@@ -10,6 +10,9 @@
 #define MAX_CLIENTS 3
 #define BUFFER_SIZE 1024
 
+int equipament_ids[MAX_CLIENTS];
+int number_equipament = 0;
+
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
@@ -122,6 +125,10 @@ int main(int argc, char *argv[])
 					buffer[0] = 7;			// Type of the message (Id Msg) - RES_ADD
 					buffer[1] = new_socket; // Number of the equipment
 
+					// Save the equipament ID
+					equipament_ids[number_equipament++] = new_socket;
+
+					// Broadcast the new connection
 					for (i = 0; i < max_clients; i++)
 					{
 						if (client_fds[i] != 0)
@@ -138,6 +145,16 @@ int main(int argc, char *argv[])
 							}
 						}
 					}
+					// Send RES_LIST for the new equipament
+					memset(buffer, 0, BUFFER_SIZE);
+					buffer[0] = 8;			// Type of the message (Id Msg) - RES_LIST
+					//printf("Tenho %d equipamentos\n",number_equipament);
+					for(int i=0; i<number_equipament; i++){
+						//printf("i: %d  Number equipament: %d \n",i,equipament_ids[i]);
+						buffer[i + 1] = equipament_ids[i];
+						// printf("%d\n",buffer[i+1]);
+					}
+					send(new_socket,buffer,256,0);
 				}
 			}
 		}
@@ -157,6 +174,21 @@ int main(int argc, char *argv[])
 					close(sd);
 					client_fds[i] = 0;
 					client_count--;
+
+					// Remove the disconnected equipament ID
+					for (int j = 0; j < number_equipament; j++)
+					{
+						if (equipament_ids[j] == sd)
+						{
+							// Shift the remaining IDs to fill the gap
+							for (int k = j; k < number_equipament - 1; k++)
+							{
+								equipament_ids[k] = equipament_ids[k + 1];
+							}
+							number_equipament--;
+							break;
+						}
+					}
 				}
 				else
 				{
