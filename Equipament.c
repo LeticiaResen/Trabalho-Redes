@@ -11,6 +11,15 @@
 int equipament_ids[15];
 int number_equipament = 0;
 
+void list_equipament()
+{
+	printf("Equipamentos conectados: \n");
+	for (int i = 0; i < number_equipament; i++)
+	{
+		printf("ID: %d\n", equipament_ids[i]);
+	}
+}
+
 void disconect_client(int id)
 {
 	for (int i = 0; i < number_equipament; i++)
@@ -153,27 +162,26 @@ int main(int argc, char *argv[])
 				printf("Recebi RES_LIST\n");
 				for (int i = 1; i < 16; i++)
 				{
-					printf("Buffer %d: %d\n",i,buffer[i]);
 					if (buffer[i] != 0)
 					{
 						equipament_ids[i] = buffer[i];
 						number_equipament++;
 					}
 				}
-				for (int i = 0; i < number_equipament; i++)
-				{
-					printf("Received the list and registered equipment %d at index: %d\n", equipament_ids[i], i);
-				}
 			}
-			else if (msg_type == 12){
+			else if (msg_type == 12)
+			{
 				printf("Sucess removal\n");
+				close(sock);
 			}
-			else if (msg_type == 6){
-				int num_eq=buffer[1];
+			else if (msg_type == 6)
+			{
+				int num_eq = buffer[1];
 				disconect_client(num_eq);
-				printf("Equipament IdEq%d removed\n",num_eq);
+				printf("Equipament IdEq%d removed\n", num_eq);
 			}
-			else{
+			else
+			{
 				printf("Mensagem desconhecida\n");
 			}
 		}
@@ -191,12 +199,15 @@ int main(int argc, char *argv[])
 			if (strncmp(buffer, "close connection", 16) == 0)
 			{
 				memset(buffer, 0, BUFFER_SIZE);
-				buffer[0]=6; // Id message 
-				buffer[1]=equipament_ids[0]; // number of id
+				buffer[0] = 6;				   // Id message
+				buffer[1] = equipament_ids[0]; // number of id
+				// Send message to the server
+				send(sock, buffer, strlen(buffer), 0);
 			}
-
-			// Send message to the server
-			send(sock, buffer, strlen(buffer), 0);
+			if (strncmp(buffer, "list equipament", 15) == 0)
+			{
+				list_equipament();
+			}
 		}
 	}
 

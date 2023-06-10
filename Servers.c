@@ -183,15 +183,11 @@ int main(int argc, char *argv[])
 						}
 					}
 					// Send RES_LIST for the new equipament
-					printf("ENVIANDO RES_LIST\n");
 					memset(buffer, 0, BUFFER_SIZE);
 					buffer[0] = 8; // Type of the message (Id Msg) - RES_LIST
-					printf("Tenho %d equipamentos\n",number_equipament);
 					for (int i = 1; i < number_equipament; i++)
 					{
-						printf("i: %d  Number equipament: %d \n",i,equipament_ids[i]);
 						buffer[i] = equipament_ids[i-1];
-						// printf("%d\n",buffer[i+1]);
 					}
 					if(send(new_socket, buffer, 256, 0) <0){
 						printf("ERRO AO ENVIAR RES_LIST\n");
