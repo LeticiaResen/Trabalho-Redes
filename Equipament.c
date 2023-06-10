@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/select.h>
+#include <time.h>
 
 #define BUFFER_SIZE 1024
 
@@ -180,9 +181,25 @@ int main(int argc, char *argv[])
 				disconect_client(num_eq);
 				printf("Equipament IdEq%d removed\n", num_eq);
 			}
-			else
-			{
-				printf("Mensagem desconhecida\n");
+			else if(msg_type == 9){
+				// Extrai as informações
+				int id_req=buffer[1];
+				int id=buffer[2];
+				printf("Equipament IdEq%d requested information\n", id_req);
+				// Gera numero aleatório
+				srand(time(NULL));
+				int payload= rand();
+				// Envia a mensagem
+				memset(buffer, 0, BUFFER_SIZE);
+				buffer[0] = 10;		      // Id message
+				buffer[1] = id;           // number of id origem
+				buffer[2] = id_req;		 // number of id destino ( o que requisitou)
+				buffer[3] = payload;
+				// Send message to the server
+				send(sock, buffer, strlen(buffer), 0);
+			}
+			else if(msg_type == 10){
+				printf("Value from IdEq%d: <%d>\n",buffer[1],buffer[3]);
 			}
 		}
 
@@ -207,6 +224,19 @@ int main(int argc, char *argv[])
 			if (strncmp(buffer, "list equipament", 15) == 0)
 			{
 				list_equipament();
+			}
+			if (strncmp(buffer, "request information from IdEq", 29) == 0)
+			{
+				// Find out the ID of the equipament 
+				int num_eq;
+                sscanf(&buffer[29], "%d", &num_eq);
+				// Send the requisition
+				memset(buffer, 0, BUFFER_SIZE);
+				buffer[0] = 9;				   // Id message
+				buffer[1] = equipament_ids[0]; // number of id origem
+				buffer[2] = num_eq; //number of id dest
+				// Send message to the server
+				send(sock, buffer, strlen(buffer), 0);
 			}
 		}
 	}

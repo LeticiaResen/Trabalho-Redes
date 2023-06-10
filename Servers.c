@@ -42,9 +42,11 @@ void disconect_client(int id)
 	}
 }
 
-void broadcast(char* message){
-	for(int i=0; i<number_equipament; i++){
-		send(equipament_ids[i],message,256,0);
+void broadcast(char *message)
+{
+	for (int i = 0; i < number_equipament; i++)
+	{
+		send(equipament_ids[i], message, 256, 0);
 	}
 }
 
@@ -162,8 +164,7 @@ int main(int argc, char *argv[])
 
 					// Save the equipament ID
 					number_equipament++;
-					equipament_ids[number_equipament-1] = new_socket;
-					
+					equipament_ids[number_equipament - 1] = new_socket;
 
 					// Broadcast the new connection
 					for (i = 0; i < max_clients; i++)
@@ -187,9 +188,10 @@ int main(int argc, char *argv[])
 					buffer[0] = 8; // Type of the message (Id Msg) - RES_LIST
 					for (int i = 1; i < number_equipament; i++)
 					{
-						buffer[i] = equipament_ids[i-1];
+						buffer[i] = equipament_ids[i - 1];
 					}
-					if(send(new_socket, buffer, 256, 0) <0){
+					if (send(new_socket, buffer, 256, 0) < 0)
+					{
 						printf("ERRO AO ENVIAR RES_LIST\n");
 					};
 				}
@@ -249,17 +251,65 @@ int main(int argc, char *argv[])
 							printf("Number of clients: %d\n", number_equipament);
 							// Broadcast REQ_REM
 							memset(buffer, 0, BUFFER_SIZE);
-							buffer[0] = 6; // Type of the message (Id Msg) - REM
-							buffer[1] = num_eq; //Num eq
+							buffer[0] = 6;		// Type of the message (Id Msg) - REM
+							buffer[1] = num_eq; // Num eq
 							broadcast(buffer);
 						}
 						else
 						{
 							memset(buffer, 0, BUFFER_SIZE);
 							buffer[0] = 11; // Type of the message (Id Msg) - ERROR
-							buffer[1] = 1;  // Number of error
+							buffer[1] = 1;	// Number of error
 							send(num_eq, buffer, 256, 0);
 						}
+					}
+					else if (buffer[0] == 9)
+					{
+						int id_or = buffer[1];
+						int id_dest = buffer[2];
+						// Verifica se o Id de origem é válido
+						if (verify_client(id_or))
+						{
+							if (verify_client(id_dest))
+							{
+								// Send REQ_INF for the target
+								memset(buffer, 0, BUFFER_SIZE);
+								buffer[0] = 9;		 // Id message
+								buffer[1] = id_or;	 // number of id origem
+								buffer[2] = id_dest; // number of id dest
+								// Send message to the server
+								send(id_dest, buffer, strlen(buffer), 0);
+							}
+							else
+							{
+								printf("Equipament IdEq%d not found\n", id_dest);
+								memset(buffer, 0, BUFFER_SIZE);
+								buffer[0] = 11; // Type of the message (Id Msg) - ERROR
+								buffer[1] = 3;	// Number of error
+								send(id_or, buffer, 2, 0);
+							}
+						}
+						else
+						{ // Tratar a logica depois
+							printf("Equipament IdEq%d not found\n", id_or);
+							memset(buffer, 0, BUFFER_SIZE);
+							buffer[0] = 11; // Type of the message (Id Msg) - ERROR
+							buffer[1] = 2;	// Number of error
+							send(id_or, buffer, 2, 0);
+						}
+					}
+					else if (buffer[0] == 10)
+					{
+						// Reencaminha o RES_INF
+						int orig=buffer[1];
+						int dest = buffer[2];
+						int payload= buffer[3];
+						memset(buffer, 0, BUFFER_SIZE);
+						buffer[0] = 10; // Type of the message (Id Msg) 
+						buffer[1] = orig;	// Id origem
+						buffer[2] = dest;
+						buffer[3] = payload;
+						send(dest, buffer, 256, 0);
 					}
 				}
 			}
