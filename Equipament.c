@@ -130,15 +130,17 @@ int main(int argc, char *argv[])
 					break;
 				}
 			}
-			if (msg_type == 7) // It's a RES_ADD
+			else if (msg_type == 7) // It's a RES_ADD
 			{
 				// Find out the number of the new equipment
 				int eq_code = buffer[1];
+
 				// Print the message
 				if (number_equipament == 0)
 				{
 					equipament_ids[0] = eq_code;
 					printf("New ID: %d \n", eq_code);
+					number_equipament++;
 				}
 				else
 				{
@@ -146,10 +148,12 @@ int main(int argc, char *argv[])
 					printf("Equipment IdEq %d added\n", eq_code);
 				}
 			}
-			if (msg_type == 8)
+			else if (msg_type == 8)
 			{ // It's a RES_LIST
+				printf("Recebi RES_LIST\n");
 				for (int i = 1; i < 16; i++)
 				{
+					printf("Buffer %d: %d\n",i,buffer[i]);
 					if (buffer[i] != 0)
 					{
 						equipament_ids[i] = buffer[i];
@@ -161,13 +165,16 @@ int main(int argc, char *argv[])
 					printf("Received the list and registered equipment %d at index: %d\n", equipament_ids[i], i);
 				}
 			}
-			if (msg_type == 12){
+			else if (msg_type == 12){
 				printf("Sucess removal\n");
 			}
-			if (msg_type == 6){
-				int num_eq=buffer[0];
+			else if (msg_type == 6){
+				int num_eq=buffer[1];
 				disconect_client(num_eq);
 				printf("Equipament IdEq%d removed\n",num_eq);
+			}
+			else{
+				printf("Mensagem desconhecida\n");
 			}
 		}
 
