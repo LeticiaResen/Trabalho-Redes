@@ -11,6 +11,23 @@
 int equipament_ids[15];
 int number_equipament = 0;
 
+void disconect_client(int id)
+{
+	for (int i = 0; i < number_equipament; i++)
+	{
+		if (equipament_ids[i] == id)
+		{
+			// Shift the remaining IDs to fill the gap
+			for (int k = i; k < number_equipament - 1; k++)
+			{
+				equipament_ids[k] = equipament_ids[k + 1];
+			}
+			number_equipament--;
+			break;
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
@@ -146,6 +163,11 @@ int main(int argc, char *argv[])
 			}
 			if (msg_type == 12){
 				printf("Sucess removal\n");
+			}
+			if (msg_type == 6){
+				int num_eq=buffer[0];
+				disconect_client(num_eq);
+				printf("Equipament IdEq%d removed\n",num_eq);
 			}
 		}
 

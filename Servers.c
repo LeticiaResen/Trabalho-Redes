@@ -13,6 +13,18 @@
 int equipament_ids[MAX_CLIENTS];
 int number_equipament = 0;
 
+int verify_client(int id)
+{
+	for (int i = 0; i < number_equipament; i++)
+	{
+		if (equipament_ids[i] == id)
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+
 void disconect_client(int id)
 {
 	for (int i = 0; i < number_equipament; i++)
@@ -27,6 +39,12 @@ void disconect_client(int id)
 			number_equipament--;
 			break;
 		}
+	}
+}
+
+void broadcast(char* message){
+	for(int i=0; i<number_equipament; i++){
+		send(equipament_ids[i],message,256,0);
 	}
 }
 
@@ -216,15 +234,31 @@ int main(int argc, char *argv[])
 					if (buffer[0] == 6)
 					{
 						int num_eq = buffer[1];
-						// Remove from equipaments list
-						disconect_client(num_eq);
-						// Send the OK message
-						memset(buffer, 0, BUFFER_SIZE);
-						buffer[0] = 12; // Type of the message (Id Msg) - OK
-						send(num_eq,buffer,256,0);
-						// Print the message
-						printf("Equipament IdEq%d removed\n", num_eq);
-						printf("Number of clients: %d\n", number_equipament);
+						// Verify if its a valid client
+						if (verify_client(num_eq))
+						{
+							// Remove from equipaments list
+							disconect_client(num_eq);
+							// Send the OK message
+							memset(buffer, 0, BUFFER_SIZE);
+							buffer[0] = 12; // Type of the message (Id Msg) - OK
+							send(num_eq, buffer, 256, 0);
+							// Print the message
+							printf("Equipament IdEq%d removed\n", num_eq);
+							printf("Number of clients: %d\n", number_equipament);
+							// Broadcast REQ_REM
+							memset(buffer, 0, BUFFER_SIZE);
+							buffer[0] = 6; // Type of the message (Id Msg) - REM
+							buffer[1] = num_eq; //Num eq
+							broadcast(buffer);
+						}
+						else
+						{
+							memset(buffer, 0, BUFFER_SIZE);
+							buffer[0] = 11; // Type of the message (Id Msg) - ERROR
+							buffer[1] = 1;  // Number of error
+							send(num_eq, buffer, 256, 0);
+						}
 					}
 				}
 			}
