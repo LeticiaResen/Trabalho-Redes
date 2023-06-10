@@ -52,9 +52,9 @@ void broadcast(char *message)
 
 int main(int argc, char *argv[])
 {
-	if (argc != 2)
+	if (argc != 4)
 	{
-		printf("Usage: %s <server_port>\n", argv[0]);
+		printf("Usage: %s <server_ip> <port_p2p> <port_client>\n", argv[0]);;
 		return 1;
 	}
 
@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
 	}
 
 	address.sin_family = AF_INET;
-	address.sin_addr.s_addr = INADDR_ANY;
-	address.sin_port = htons(atoi(argv[1]));
+	address.sin_addr.s_addr = inet_addr(argv[1]);
+	address.sin_port = htons(atoi(argv[3]));
 
 	if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
 	{
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		if (FD_ISSET(server_fd, &readfds))
 		{
 			addrlen = sizeof(address);
-			if ((new_socket = accept(server_fd, (struct sockaddr *)&address, &addrlen)) < 0)
+			if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0)
 			{
 				perror("accept");
 				exit(EXIT_FAILURE);
