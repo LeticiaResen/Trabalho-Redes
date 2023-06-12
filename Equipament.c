@@ -174,12 +174,15 @@ int main(int argc, char *argv[])
 			{
 				printf("Sucess removal\n");
 				close(sock);
+				exit(EXIT_SUCCESS);
 			}
 			else if (msg_type == 6)
 			{
 				int num_eq = buffer[1];
 				disconect_client(num_eq);
 				printf("Equipament IdEq%d removed\n", num_eq);
+				
+
 			}
 			else if(msg_type == 9){
 				// Extrai as informações
